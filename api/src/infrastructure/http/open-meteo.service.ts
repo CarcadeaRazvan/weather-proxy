@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { City } from '../entities/city.entity';
+import { WeatherDTO } from '../entities/weatherDTO.entity';
 
 type OpenMeteoResponse = {
   current_weather: {
@@ -10,19 +12,14 @@ type OpenMeteoResponse = {
 
 export class OpenMeteoService {
   async getCurrentWeather(
-    lat: number,
-    lon: number,
-  ): Promise<{
-    temperature: number;
-    windSpeed: number;
-    windDirection: number;
-  }> {
+    city: City
+  ): Promise<WeatherDTO> {
     const response = await axios.get<OpenMeteoResponse>(
       'https://api.open-meteo.com/v1/forecast',
       {
         params: {
-          latitude: lat,
-          longitude: lon,
+          latitude: city.lat,
+          longitude: city.lon,
           current_weather: true,
         },
       },
@@ -34,10 +31,10 @@ export class OpenMeteoService {
       throw new Error('Weather data not available');
     }
 
-    return {
-      temperature: current.temperature,
-      windSpeed: current.windspeed,
-      windDirection: current.winddirection,
-    };
+    return new WeatherDTO(
+      current.temperature,
+      current.windspeed,
+      current.winddirection,
+    );
   }
 }

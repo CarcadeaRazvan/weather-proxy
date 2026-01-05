@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   redis:
     image: redis:7-alpine
@@ -7,12 +5,8 @@ services:
       - "6379:6379"
 
   api:
-    image: node:20-alpine
-    working_dir: /app
-    volumes:
-      - .:/app
-    command: >
-      sh -c "npm install && npx nx serve api"
+    build: .
+    command: npx nx serve api
     ports:
       - "3000:3000"
     environment:
@@ -22,12 +16,9 @@ services:
       - redis
 
   api-test:
-    image: node:20-alpine
-    working_dir: /app
-    volumes:
-      - .:/app
-    command: sh -c "npm install && npx nx test api"
+    build: .
+    command: npx nx test api
     environment:
       REDIS_HOST: redis
     depends_on:
-      - redis    
+      - redis

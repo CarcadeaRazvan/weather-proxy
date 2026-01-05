@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 
 import { GetWeatherUseCase } from '@api/application/use-cases/get-weather.usecase';
+import { CacheData } from '@api/application/entities/cache-data.entity';
 
 @Controller()
 export class WeatherController {
@@ -25,6 +26,6 @@ export class WeatherController {
       throw new BadRequestException('USER_ID header is required');
     }
 
-    return this.getWeather.execute(city, userId);
+    return this.getWeather.execute(new CacheData(city, userId));
   }
 }

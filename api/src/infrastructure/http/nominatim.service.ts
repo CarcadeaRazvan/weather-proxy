@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { City } from '../entities/city.entity';
 
 type NominatimResponse = {
   lat: string;
@@ -6,7 +7,7 @@ type NominatimResponse = {
 };
 
 export class NominatimService {
-  async getCoordinates(city: string): Promise<{ lat: number; lon: number }> {
+  async getCoordinates(city: string): Promise<City> {
     const response = await axios.get<NominatimResponse[]>(
       'https://nominatim.openstreetmap.org/search',
       {
@@ -24,9 +25,9 @@ export class NominatimService {
       throw new Error(`City not found: ${city}`);
     }
 
-    return {
-      lat: Number(response.data[0].lat),
-      lon: Number(response.data[0].lon),
-    };
+    return new City(
+      Number(response.data[0].lat),
+      Number(response.data[0].lon)
+    );
   }
 }

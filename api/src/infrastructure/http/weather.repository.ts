@@ -3,6 +3,7 @@ import { Weather } from '../../domain/entities/weather.entity';
 import { NominatimService } from './nominatim.service';
 import { OpenMeteoService } from './open-meteo.service';
 import { ExternalAPIError } from '@api/domain/errors/external-api.error';
+import { City } from '../entities/city.entity';
 
 export class ExternalWeatherRepository implements WeatherRepository {
   constructor(
@@ -10,10 +11,10 @@ export class ExternalWeatherRepository implements WeatherRepository {
     private readonly meteo: OpenMeteoService,
   ) {}
 
-  async getWeatherByCity(city: string): Promise<Weather> {
+  async getWeatherByCity(cityName: string): Promise<Weather> {
     try {
-      const { lat, lon } = await this.nominatim.getCoordinates(city);
-      const weatherData = await this.meteo.getCurrentWeather(lat, lon);
+      const city: City = await this.nominatim.getCoordinates(cityName);
+      const weatherData = await this.meteo.getCurrentWeather(city);
 
       return new Weather(
         weatherData.temperature,

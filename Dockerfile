@@ -1,27 +1,16 @@
-FROM node:20-alpine AS base
+FROM node:20-alpine
 
 WORKDIR /app
 
-FROM base AS deps
+COPY package.json package-lock.json nx.json tsconfig.base.json ./
 
-COPY package.json package-lock.json ./
-RUN npm ci
-
-FROM deps AS build
+RUN npm ci --silent --no-progress
 
 COPY . .
-RUN npm run build api
 
-FROM base AS runtime
-
-ENV NODE_ENV=production
-
-WORKDIR /app
-
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY package.json ./
+ENV NX_DAEMON=false
+ENV NPM_CONFIG_LOGLEVEL=error
 
 EXPOSE 3000
 
-CMD ["node", "dist/apps/api/main.js"]
+CMD ["npx", "nx", "serve", "api"]

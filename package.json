@@ -28,7 +28,9 @@
     "ts-node": "10.9.1",
     "tslib": "^2.3.0",
     "typescript": "~5.9.2",
-    "webpack-cli": "^5.1.4"
+    "webpack-cli": "^5.1.4",
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.1.4"
   },
   "workspaces": [
     "packages/*",
