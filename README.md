@@ -1,104 +1,50 @@
-# New Nx Repository
+Am ales sa folosesc o arhitectura hexagonala deoarece aplicatia include call-uri catre 
+servicii externe (meteo/city APIs), cache distribuit prin Redis si rate limiting prin
+contorul atomic din Redis. Asadar, avem nevoie ca solutia propusa sa delimiteze logica 
+dintre componente, sa ofere o scalabilitate si o rezilienta mai buna. 
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+Arhitectura include urmatoarele componente principale:
+- interfaces/ <- punctul de intrare in aplicatie (definirea controllerelor care primesc
+                    requesturile HTTP)
+- application/ <- logica de business pentru cache cu use-caseurile acestuia
+- domain/ : ports/ <- include definirea interfetelor care vor fi implementate in infrastructure
+            errors/ <- include partea de tratare custom a erorilor
+            entities/ <- definirea DTOs
+- infrastructure/ <- include implementarile pentru API-urile externe, caching si rate-limit.                          
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+Am facut implementarea folosindu-ma de NestJS pentru partea de API si Jest + Supertest
+pentru partea de testare, iar toata solutia am integrat-o intr-un container de Docker
+pentru a putea fi rulata mai usor. (Am generat monorepo-ul folosindu-ma de NX, iar de
+aceea pot sa mai existe anumite fisiere redundante in aplicatie)
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/js?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+Am definit caching de 1 minut pentru un oras, avand cheia "weather:city" definita.
+Am implementat un flow prin care numele unui oras era transformat in coordonatele sale
+folosind Nomatim API, apoi aceste coordonate folosite pentru a obtine datele meteo
+folosind Open-meteo API, iar apoi prin intermediul unui DTO am extras doar datele necesare.
+Am implementat rate limiting folosindu-ma de atomic counter-ul oferit de Redis. Prin
+intermediul acestuia m-am asigurat ca aceasta limita este definita la nivel de user
+si nu la nivel de aplicatie, putand fi astfel scalata in cazul in care aplicatia
+ar fi distribuita pe mai multe noduri.
+Am definit erori custom ce sunt prinse in cazuri diferite, 429, 500, cu posibilitatea
+de a putea adauga altele noi la nevoie.
+Am implementat un set de teste pentru a testa caching-ul si rate-limiting-ul. Am propus
+urmatoarele cazuri:
+  1. Cand un utilizator face mai mult de 5 request-uri, va primi "Limit exceeded" incepand cu al 6-lea.
+  2. Cand un utilizator face request pe acelasi oras, doar primul request va trece mai departe de API,
+        iar celelalte vor folosi cache-ul din Redis.
+  3. Cand un utilizator face 5 request-uri pe orase diferite, toate vor fi un call diferit.
+  4. Cand 2 utilizatori fac call pe acelasi oras, doar primul va face un request propriu-zis, iar
+        celuilalt ii va fi returnata valoarea din cache daca este valida (<1 min).
+  5. Cand 2 utilizatori fac call pe 2 orase diferite, vor fi in total 2 call-uri si nu vor interfera
+        intre ele.
+  6. Cand 5 utilizatori diferiti fac call in acelasi timp, call-urile nu interfereaza intre ele.
 
-## Generate a library
+Concurenta a fost tratata cu ajutorul atomicitatii operatiilor din Redis, performanta cu ajutorul
+cache-ului (primul request este mereu mai lent, iar urmatoarele aproape instantaneu), scalabilitatea
+si rezilienta au fost obtinute prin definirea arhitecturii intr-un mod ce suporta imbunatatiri ulterioare,
+tolereaza fail-ul unei parti fara ca celelalte sa fie impactate si trateaza cazurile de eroare individual.                   
 
-```sh
-npx nx g @nx/js:lib packages/pkg1 --publishable --importPath=@my-org/pkg1
-```
-
-## Run tasks
-
-To build the library use:
-
-```sh
-npx nx build pkg1
-```
-
-To run any task with Nx use:
-
-```sh
-npx nx <target> <project-name>
-```
-
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
-
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Versioning and releasing
-
-To version and release the library use
-
-```
-npx nx release
-```
-
-Pass `--dry-run` to see what would happen without actually releasing the library.
-
-[Learn more about Nx release &raquo;](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Keep TypeScript project references up to date
-
-Nx automatically updates TypeScript [project references](https://www.typescriptlang.org/docs/handbook/project-references.html) in `tsconfig.json` files to ensure they remain accurate based on your project dependencies (`import` or `require` statements). This sync is automatically done when running tasks such as `build` or `typecheck`, which require updated references to function correctly.
-
-To manually trigger the process to sync the project graph dependencies information to the TypeScript project references, run the following command:
-
-```sh
-npx nx sync
-```
-
-You can enforce that the TypeScript project references are always in the correct state when running in CI by adding a step to your CI job configuration that runs the following command:
-
-```sh
-npx nx sync:check
-```
-
-[Learn more about nx sync](https://nx.dev/reference/nx-commands#sync)
-
-## Nx Cloud
-
-Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
-
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-### Set up CI (non-Github Actions CI)
-
-**Note:** This is only required if your CI provider is not GitHub Actions.
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
-```
-
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Install Nx Console
-
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
-
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Useful links
-
-Learn more:
-
-- [Learn more about this workspace setup](https://nx.dev/nx-api/js?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-And join the Nx community:
-
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Totul se poate rula dintr-un "docker-compose up", ce va porni containerele de Redis, cel de Weather-Proxy,
+dar si cel de teste (care se va inchide dupa rulare), iar apoi cele principale vor ramane deschise si se poate
+testa manual folosind un 'curl -H "USER_ID: user1" "http://localhost:3000/weather?city=London"'. Testele pot
+fi rulate si individual, cu cerinta de a avea containerul de redis pornit, prin "REDIS_HOST=localhost nx test api".

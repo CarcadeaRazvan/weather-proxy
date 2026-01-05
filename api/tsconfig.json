@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.base.json",
+  "files": [],
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts"
+  ],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.spec.json"
+    }
+  ]
+}
